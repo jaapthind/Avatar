@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dual-Matrix Neural Engine v3.0</title>
+    <title>Dual-Matrix Neural Engine v4.0</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -11,12 +11,13 @@
 
     <style>
         :root {
-            --bg-void: #020617;
-            --p1-color: #69BE28; /* Action Green Default */
-            --p1-trim: #002244;  /* Navy Blue Default */
+            --bg-void: #010409;
+            --p1-color: #69BE28; /* Action Green */
+            --p1-trim: #002244;  /* Navy Blue */
             --p2-color: #00aaff; 
             --p2-trim: #3b0764;
-            --panel: rgba(15, 23, 42, 0.85);
+            --panel: rgba(13, 17, 23, 0.85);
+            --term-green: #0f0;
         }
 
         body {
@@ -26,122 +27,166 @@
 
         #webgl-canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
 
+        /* --- ADVANCED TERMINAL BOOT SCREEN --- */
+        #boot-screen {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000; z-index: 999; display: flex; flex-direction: column;
+            padding: 40px; box-sizing: border-box; font-size: 14px;
+            color: var(--term-green); text-shadow: 0 0 5px var(--term-green);
+        }
+        .term-line { margin: 2px 0; opacity: 0; animation: fadeIn 0.1s forwards; }
+        .term-warning { color: #ff3333; text-shadow: 0 0 5px #ff3333; }
+        .term-highlight { color: #00aaff; text-shadow: 0 0 5px #00aaff; }
+        @keyframes fadeIn { to { opacity: 1; } }
+        
+        #progress-bar-container {
+            width: 100%; max-width: 600px; height: 20px; border: 2px solid var(--term-green);
+            margin-top: 20px; display: none; padding: 2px;
+        }
+        #progress-fill { height: 100%; background: var(--term-green); width: 0%; transition: width 0.2s; }
+
         /* --- PIP CAMERA FEED --- */
         #video-feed {
-            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) scaleX(-1);
-            width: 300px; border-radius: 8px; border: 2px solid #334155;
-            z-index: 10; filter: contrast(120%) saturate(0%);
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%) scaleX(-1);
+            width: 280px; border-radius: 4px; border: 1px solid #30363d;
+            z-index: 10; filter: contrast(130%) grayscale(80%);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
         }
 
         /* --- DUAL HUD PANELS --- */
         .hud {
-            position: absolute; top: 20px; width: 320px;
-            background: var(--panel); backdrop-filter: blur(10px);
-            border-radius: 12px; padding: 20px; z-index: 10;
-            display: flex; flex-direction: column; gap: 8px;
+            position: absolute; top: 30px; width: 320px;
+            background: var(--panel); backdrop-filter: blur(15px);
+            border-radius: 8px; padding: 25px; z-index: 10;
+            display: flex; flex-direction: column; gap: 10px;
         }
 
-        #hud-p1 { left: 20px; border: 1px solid var(--p1-color); box-shadow: 0 0 20px rgba(105, 190, 40, 0.2); }
-        #hud-p2 { right: 20px; border: 1px solid var(--p2-color); box-shadow: 0 0 20px rgba(0, 170, 255, 0.2); }
+        #hud-p1 { left: 30px; border-left: 4px solid var(--p1-color); box-shadow: -10px 0 30px rgba(105, 190, 40, 0.1); }
+        #hud-p2 { right: 30px; border-right: 4px solid var(--p2-color); box-shadow: 10px 0 30px rgba(0, 170, 255, 0.1); }
 
-        h2 { margin: 0 0 10px 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 2px; }
-        #hud-p1 h2 { color: var(--p1-color); border-bottom: 1px dashed var(--p1-color); padding-bottom: 5px;}
-        #hud-p2 h2 { color: var(--p2-color); border-bottom: 1px dashed var(--p2-color); padding-bottom: 5px;}
+        h2 { margin: 0 0 15px 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 3px; }
+        #hud-p1 h2 { color: var(--p1-color); }
+        #hud-p2 h2 { color: var(--p2-color); }
 
-        .data-row { display: flex; justify-content: space-between; font-size: 0.8rem; }
-        .label { color: #94a3b8; font-weight: bold; }
-        .val { font-weight: bold; }
+        .data-row { display: flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px solid #21262d; padding-bottom: 5px; }
+        .label { color: #8b949e; }
+        .val { font-weight: bold; font-family: monospace; font-size: 0.95rem; }
 
         /* --- GLOBAL CONTROLS --- */
         .global-controls {
-            position: absolute; bottom: 20px; right: 20px; width: 280px;
-            background: var(--panel); padding: 20px; border-radius: 12px;
-            border: 1px solid #334155; z-index: 10; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: absolute; bottom: 30px; right: 30px; width: 300px;
+            background: var(--panel); padding: 25px; border-radius: 8px;
+            border: 1px solid #30363d; z-index: 10; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
         }
         
-        .global-controls h3 { margin: 0 0 15px 0; color: #fff; font-size: 1.1rem; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        .global-controls h3 { margin: 0 0 20px 0; color: #c9d1d9; font-size: 1rem; letter-spacing: 2px; text-transform: uppercase;}
         .btn {
-            width: 100%; padding: 12px; margin-bottom: 15px;
-            background: transparent; border: 1px solid #475569;
-            color: #fff; font-family: inherit; font-weight: bold;
-            cursor: pointer; transition: 0.2s; border-radius: 6px;
-            text-transform: uppercase; letter-spacing: 1px;
+            width: 100%; padding: 14px; margin-bottom: 15px;
+            background: #21262d; border: 1px solid #30363d;
+            color: #c9d1d9; font-family: inherit; font-weight: bold;
+            cursor: pointer; transition: 0.2s; border-radius: 4px;
+            text-transform: uppercase; letter-spacing: 2px;
         }
-        .btn.active { background: #475569; border-color: #fff; }
-        .btn:hover { background: #334155; }
+        .btn.active { background: #1f6feb; border-color: #388bfd; color: #fff; box-shadow: 0 0 15px rgba(31, 111, 235, 0.4); }
+        .btn:hover { border-color: #8b949e; }
 
-        select { width: 100%; padding: 10px; background: #000; color: #fff; border: 1px solid #475569; border-radius: 6px; outline: none; cursor: pointer; }
-        label.select-label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 5px; display: block; font-weight: bold; }
+        select { width: 100%; padding: 12px; background: #0d1117; color: #c9d1d9; border: 1px solid #30363d; border-radius: 4px; outline: none; cursor: pointer; font-family: inherit; }
+        label.select-label { font-size: 0.75rem; color: #8b949e; margin-bottom: 8px; display: block; font-weight: bold; text-transform: uppercase; }
 
-        #loading {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-void); z-index: 100; display: flex;
-            flex-direction: column; align-items: center; justify-content: center;
-        }
-        .spinner {
-            width: 70px; height: 70px; border: 4px solid #334155;
-            border-top-color: var(--p1-color); border-right-color: var(--p2-color);
-            border-radius: 50%; animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        
         .alert-box {
-            background: #7f1d1d; color: #fca5a5; padding: 8px; text-align: center;
-            border-radius: 6px; font-weight: bold; margin-top: 15px; display: none;
-            border: 1px solid #f87171; animation: flash 0.3s infinite; text-transform: uppercase; letter-spacing: 1px;
+            background: #490202; color: #ff7b72; padding: 10px; text-align: center;
+            border-radius: 4px; font-weight: bold; margin-top: 15px; display: none;
+            border: 1px solid #a93226; animation: flash 0.4s infinite; text-transform: uppercase; letter-spacing: 2px;
         }
-        @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div id="loading">
-        <div class="spinner"></div>
-        <h2 style="color: #fff; margin-top: 25px; letter-spacing: 3px;">INITIALIZING DUAL-AGENT TRACKING</h2>
-        <p style="color: #64748b; font-size: 0.9rem;">Booting 956-Node Neural Mesh Pipeline...</p>
+    <div id="boot-screen">
+        <div id="terminal-output"></div>
+        <div id="progress-bar-container"><div id="progress-fill"></div></div>
     </div>
 
     <canvas id="webgl-canvas"></canvas>
     <video id="video-feed" autoplay playsinline></video>
 
     <div class="hud" id="hud-p1">
-        <h2>AGENT 01 [P1]</h2>
-        <div class="data-row"><span class="label">STATUS:</span><span class="val" id="p1-status" style="color: #ef4444;">OFFLINE</span></div>
-        <div class="data-row"><span class="label">NODES:</span><span class="val" id="p1-nodes">0 / 478</span></div>
-        <div class="data-row"><span class="label">PITCH (X):</span><span class="val" id="p1-pitch">0.0°</span></div>
-        <div class="data-row"><span class="label">YAW (Y):</span><span class="val" id="p1-yaw">0.0°</span></div>
-        <div class="data-row"><span class="label">ROLL (Z):</span><span class="val" id="p1-roll">0.0°</span></div>
-        <div class="data-row"><span class="label">MOUTH_APERTURE:</span><span class="val" id="p1-mouth">0.0 units</span></div>
-        <div class="alert-box" id="p1-alert">ACTION DETECTED: TONGUE EXTENDED</div>
+        <h2>AGENT 01</h2>
+        <div class="data-row"><span class="label">UPLINK:</span><span class="val" id="p1-status" style="color: #ff7b72;">DISCONNECTED</span></div>
+        <div class="data-row"><span class="label">NODE_SYNC:</span><span class="val" id="p1-nodes">0 / 478</span></div>
+        <div class="data-row"><span class="label">PITCH_AXIS:</span><span class="val" id="p1-pitch">0.00°</span></div>
+        <div class="data-row"><span class="label">YAW_AXIS:</span><span class="val" id="p1-yaw">0.00°</span></div>
+        <div class="data-row"><span class="label">APERTURE:</span><span class="val" id="p1-mouth">0.00 mm</span></div>
+        <div class="alert-box" id="p1-alert">TONGUE DEPLOYED</div>
     </div>
 
     <div class="hud" id="hud-p2">
-        <h2>AGENT 02 [P2]</h2>
-        <div class="data-row"><span class="label">STATUS:</span><span class="val" id="p2-status" style="color: #ef4444;">OFFLINE</span></div>
-        <div class="data-row"><span class="label">NODES:</span><span class="val" id="p2-nodes">0 / 478</span></div>
-        <div class="data-row"><span class="label">PITCH (X):</span><span class="val" id="p2-pitch">0.0°</span></div>
-        <div class="data-row"><span class="label">YAW (Y):</span><span class="val" id="p2-yaw">0.0°</span></div>
-        <div class="data-row"><span class="label">ROLL (Z):</span><span class="val" id="p2-roll">0.0°</span></div>
-        <div class="data-row"><span class="label">MOUTH_APERTURE:</span><span class="val" id="p2-mouth">0.0 units</span></div>
-        <div class="alert-box" id="p2-alert">ACTION DETECTED: TONGUE EXTENDED</div>
+        <h2>AGENT 02</h2>
+        <div class="data-row"><span class="label">UPLINK:</span><span class="val" id="p2-status" style="color: #ff7b72;">DISCONNECTED</span></div>
+        <div class="data-row"><span class="label">NODE_SYNC:</span><span class="val" id="p2-nodes">0 / 478</span></div>
+        <div class="data-row"><span class="label">PITCH_AXIS:</span><span class="val" id="p2-pitch">0.00°</span></div>
+        <div class="data-row"><span class="label">YAW_AXIS:</span><span class="val" id="p2-yaw">0.00°</span></div>
+        <div class="data-row"><span class="label">APERTURE:</span><span class="val" id="p2-mouth">0.00 mm</span></div>
+        <div class="alert-box" id="p2-alert">TONGUE DEPLOYED</div>
     </div>
 
     <div class="global-controls">
-        <h3>System Overrides</h3>
-        <button class="btn active" id="btn-mode">MODE: 2 PLAYERS</button>
+        <h3>Matrix Override</h3>
+        <button class="btn active" id="btn-mode">DUAL AGENT MODE</button>
         <div>
-            <label class="select-label">EQUIP 3D ASSETS:</label>
+            <label class="select-label">ACTIVE 3D MESHES:</label>
             <select id="asset-select">
-                <option value="patka">Cyber Patka / Joora</option>
-                <option value="none">Raw Geometry Only</option>
+                <option value="patka">Cyber Joora / Patka</option>
+                <option value="none">Raw Geometry Net</option>
             </select>
         </div>
     </div>
 
     <script>
         // ==========================================
-        // 1. THREE.JS SCENE SETUP
+        // 0. FAKE TERMINAL BOOT SEQUENCE (To mask ML loading times)
+        // ==========================================
+        const termOutput = document.getElementById('terminal-output');
+        const progressBar = document.getElementById('progress-bar-container');
+        const progressFill = document.getElementById('progress-fill');
+        
+        const bootLines = [
+            "Initiating BIOS check...",
+            "Loading WebGL Renderer via Three.js r128...",
+            "<span class='term-highlight'>SUCCESS: Hardware Acceleration Detected (MSI GPU).</span>",
+            "Establishing secure HTTPS camera handshake...",
+            "Awaiting user permission...",
+            "Camera stream acquired. Resolving dimensions...",
+            "Contacting Google ML Servers for Neural Weights...",
+            "<span class='term-warning'>WARNING: Model size is large (15MB+). Connection speed dictates load time.</span>",
+            "Downloading 478-node FaceMesh topology..."
+        ];
+
+        let lineIdx = 0;
+        function typeTerminal() {
+            if (lineIdx < bootLines.length) {
+                const p = document.createElement('div');
+                p.className = 'term-line';
+                p.innerHTML = bootLines[lineIdx];
+                termOutput.appendChild(p);
+                lineIdx++;
+                setTimeout(typeTerminal, 400 + Math.random() * 800);
+            } else {
+                progressBar.style.display = 'block';
+                // Fake progress that hangs at 90% until the actual AI loads
+                let prog = 0;
+                const int = setInterval(() => {
+                    prog += Math.random() * 5;
+                    if (prog > 90) clearInterval(int);
+                    progressFill.style.width = Math.min(prog, 90) + '%';
+                }, 200);
+            }
+        }
+        typeTerminal();
+
+        // ==========================================
+        // 1. ADVANCED THREE.JS CYBER-STADIUM
         // ==========================================
         const canvas = document.getElementById('webgl-canvas');
         const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
@@ -149,115 +194,124 @@
         renderer.setPixelRatio(window.devicePixelRatio);
 
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x020617, 0.0008);
+        scene.fog = new THREE.FogExp2(0x010409, 0.0006);
 
-        // Perspective Camera pulled back to fit two people
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 5000);
-        camera.position.z = 1000;
-        camera.position.y = -100;
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 6000);
+        camera.position.set(0, 100, 1200);
 
-        // Dynamic Lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
         scene.add(ambientLight);
         
-        const lightP1 = new THREE.PointLight(0x69BE28, 2, 1500);
-        lightP1.position.set(-400, 300, 300);
-        scene.add(lightP1);
+        const spot1 = new THREE.SpotLight(0x69BE28, 5, 3000, Math.PI/4, 0.5, 1);
+        spot1.position.set(-800, 800, 500);
+        scene.add(spot1);
         
-        const lightP2 = new THREE.PointLight(0x00aaff, 2, 1500);
-        lightP2.position.set(400, 300, 300);
-        scene.add(lightP2);
+        const spot2 = new THREE.SpotLight(0x00aaff, 5, 3000, Math.PI/4, 0.5, 1);
+        spot2.position.set(800, 800, 500);
+        scene.add(spot2);
 
-        // Cyber Grid Floor
-        const grid = new THREE.GridHelper(3000, 60, 0x334155, 0x0f172a);
-        grid.position.y = -500;
-        scene.add(grid);
+        // --- Cyber Stadium Environment ---
+        const gridHelper = new THREE.GridHelper(5000, 100, 0x1f6feb, 0x0d1117);
+        gridHelper.position.y = -600;
+        scene.add(gridHelper);
+
+        // Floating Monoliths in background
+        const monolithGeo = new THREE.BoxGeometry(100, 800, 100);
+        const monolithMat = new THREE.MeshStandardMaterial({ color: 0x010409, roughness: 0.1, metalness: 0.9 });
+        for(let i=0; i<10; i++) {
+            const m = new THREE.Mesh(monolithGeo, monolithMat);
+            m.position.set((Math.random() - 0.5) * 4000, -200, -1000 - Math.random() * 2000);
+            scene.add(m);
+        }
+
+        // Particle Dust
+        const dustGeo = new THREE.BufferGeometry();
+        const dustPos = new Float32Array(2000 * 3);
+        for(let i=0; i<2000*3; i++) dustPos[i] = (Math.random() - 0.5) * 4000;
+        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+        const dustMat = new THREE.PointsMaterial({ color: 0x8b949e, size: 4, transparent: true, opacity: 0.4 });
+        const dustSystem = new THREE.Points(dustGeo, dustMat);
+        scene.add(dustSystem);
 
         // ==========================================
         // 2. PROCEDURAL AVATAR CLASS (Faces, Torso, Tongue)
         // ==========================================
         class HolographicAgent {
-            constructor(primaryColorHex, trimColorHex, name) {
-                this.name = name;
+            constructor(primaryColorHex, trimColorHex) {
                 this.primaryColor = primaryColorHex;
                 this.trimColor = trimColorHex;
                 
                 this.group = new THREE.Group();
                 scene.add(this.group);
 
-                // --- A. 478 Node Face Mesh ---
+                // --- 478 Node Face Mesh ---
                 this.geometry = new THREE.BufferGeometry();
                 this.positions = new Float32Array(478 * 3);
                 this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
                 
                 this.material = new THREE.PointsMaterial({
-                    color: this.primaryColor, size: 4.5, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending
+                    color: this.primaryColor, size: 5, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending
                 });
                 this.points = new THREE.Points(this.geometry, this.material);
                 this.group.add(this.points);
 
-                // --- B. Procedural Cyber-Neck ---
-                const neckGeo = new THREE.CylinderGeometry(45, 60, 140, 32);
-                const neckMat = new THREE.MeshStandardMaterial({ color: this.primaryColor, wireframe: true, transparent: true, opacity: 0.4 });
+                // --- Procedural Cyber-Neck ---
+                const neckGeo = new THREE.CylinderGeometry(50, 70, 160, 32);
+                const neckMat = new THREE.MeshStandardMaterial({ color: this.primaryColor, wireframe: true, transparent: true, opacity: 0.5 });
                 this.neck = new THREE.Mesh(neckGeo, neckMat);
                 this.group.add(this.neck);
 
-                // --- C. Procedural Shoulders & Torso (Jersey) ---
-                const torsoGeo = new THREE.BoxGeometry(320, 220, 100);
-                const torsoMat = new THREE.MeshStandardMaterial({ color: this.trimColor, roughness: 0.9, metalness: 0.2 });
+                // --- Procedural Shoulders & Torso ---
+                const torsoGeo = new THREE.BoxGeometry(380, 260, 120);
+                const torsoMat = new THREE.MeshStandardMaterial({ color: 0x0d1117, roughness: 0.8, metalness: 0.4 });
                 this.torso = new THREE.Mesh(torsoGeo, torsoMat);
                 
-                // Torso Trim/Outline
+                // Torso Trim
                 const trimGeo = new THREE.EdgesGeometry(torsoGeo);
-                const trimMat = new THREE.LineBasicMaterial({ color: this.primaryColor, linewidth: 3 });
+                const trimMat = new THREE.LineBasicMaterial({ color: this.primaryColor, linewidth: 2 });
                 this.torsoTrim = new THREE.LineSegments(trimGeo, trimMat);
                 this.torso.add(this.torsoTrim);
                 this.group.add(this.torso);
 
-                // --- D. Dynamic Tongue Mesh ---
-                const tongueGeo = new THREE.CapsuleGeometry(15, 30, 4, 16);
-                const tongueMat = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.4 });
+                // --- Dynamic Tongue Mesh ---
+                const tongueGeo = new THREE.CapsuleGeometry(18, 40, 4, 32);
+                const tongueMat = new THREE.MeshStandardMaterial({ color: 0xff3366, roughness: 0.3 });
                 this.tongue = new THREE.Mesh(tongueGeo, tongueMat);
-                this.tongue.rotation.x = Math.PI / 2; // Point it forward
-                this.tongue.scale.set(0.01, 0.01, 0.01); // Hide initially
+                this.tongue.rotation.x = Math.PI / 2; 
+                this.tongue.scale.set(0.01, 0.01, 0.01); 
                 this.group.add(this.tongue);
 
-                // --- E. 3D Headwear Anchor (Patka) ---
+                // --- 3D Headwear Anchor (Patka) ---
                 this.hatAnchor = new THREE.Group();
                 this.group.add(this.hatAnchor);
 
-                const patkaMat = new THREE.MeshStandardMaterial({ color: this.trimColor, roughness: 0.8 });
-                const domeGeo = new THREE.SphereGeometry(95, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
+                const patkaMat = new THREE.MeshStandardMaterial({ color: this.trimColor, roughness: 0.9 });
+                const domeGeo = new THREE.SphereGeometry(105, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.55);
                 const dome = new THREE.Mesh(domeGeo, patkaMat);
                 dome.rotation.x = -0.2;
                 
-                const knotGeo = new THREE.TorusGeometry(28, 16, 16, 32);
+                const knotGeo = new THREE.TorusGeometry(32, 18, 16, 32);
                 const knot = new THREE.Mesh(knotGeo, patkaMat);
-                knot.position.set(0, 85, -20); knot.rotation.x = Math.PI / 2;
+                knot.position.set(0, 95, -20); knot.rotation.x = Math.PI / 2;
                 
                 this.hatAnchor.add(dome); this.hatAnchor.add(knot);
 
-                // Smoothing Array
                 this.smoothedPos = new Float32Array(478 * 3);
-                this.isActive = false;
-                
-                // Track previous mouth aperture for smooth tongue scaling
                 this.smoothedMouthDist = 0;
             }
 
             update(landmarks) {
-                this.isActive = true;
                 const rawPos = this.points.geometry.attributes.position.array;
-                
-                let cx = 0, cy = 0, cz = 0; // Nose
-                let chinX = 0, chinY = 0, chinZ = 0; // Chin
-                let mouthX = 0, mouthY = 0, mouthZ = 0; // Center of mouth
+                let cx = 0, cy = 0, cz = 0; 
+                let chinX = 0, chinY = 0, chinZ = 0; 
+                let mouthX = 0, mouthY = 0, mouthZ = 0; 
 
-                // 1. Process 478 Nodes with Lerp
+                // Process 478 Nodes
                 for (let i = 0; i < landmarks.length; i++) {
-                    const tx = (landmarks[i].x - 0.5) * -1200; 
-                    const ty = (landmarks[i].y - 0.5) * -1200;
-                    const tz = landmarks[i].z * 1200;
+                    const tx = (landmarks[i].x - 0.5) * -1400; 
+                    const ty = (landmarks[i].y - 0.5) * -1400;
+                    const tz = landmarks[i].z * 1400;
 
                     this.smoothedPos[i*3] += (tx - this.smoothedPos[i*3]) * 0.6;
                     this.smoothedPos[i*3+1] += (ty - this.smoothedPos[i*3+1]) * 0.6;
@@ -269,55 +323,46 @@
 
                     if (i === 1) { cx = rawPos[i*3]; cy = rawPos[i*3+1]; cz = rawPos[i*3+2]; } // Nose
                     if (i === 152) { chinX = rawPos[i*3]; chinY = rawPos[i*3+1]; chinZ = rawPos[i*3+2]; } // Chin
-                    if (i === 13) { mouthX = rawPos[i*3]; mouthY = rawPos[i*3+1]; mouthZ = rawPos[i*3+2]; } // Upper Lip Base
+                    if (i === 13) { mouthX = rawPos[i*3]; mouthY = rawPos[i*3+1]; mouthZ = rawPos[i*3+2]; } // Lip
                 }
                 this.points.geometry.attributes.position.needsUpdate = true;
 
-                // 2. Head Telemetry Math (Pitch, Yaw, Roll)
+                // Telemetry Math
                 const lEye = landmarks[133]; const rEye = landmarks[362]; const chin = landmarks[152];
                 const pitch = Math.atan2(chin.z - lEye.z, chin.y - lEye.y);
                 const yaw = Math.atan2(rEye.z - lEye.z, rEye.x - lEye.x);
                 const roll = Math.atan2(rEye.y - lEye.y, rEye.x - lEye.x);
 
-                // 3. Mathematical Tongue Trigger (Aperture Measurement)
+                // Mouth Aperture Math (Tongue trigger)
                 const upperLip = landmarks[13]; const lowerLip = landmarks[14];
                 const targetMouthDist = Math.abs(upperLip.y - lowerLip.y);
-                
-                // Smooth the mouth distance
                 this.smoothedMouthDist += (targetMouthDist - this.smoothedMouthDist) * 0.4;
                 
-                // Tongue Animation Logic
-                const tongueThreshold = 0.06; // Trigger point
+                const tongueThreshold = 0.055; 
                 if (this.smoothedMouthDist > tongueThreshold) {
-                    // Calculate how far past the threshold they are to scale the tongue
-                    const extension = Math.min((this.smoothedMouthDist - tongueThreshold) * 15, 1.5);
+                    const extension = Math.min((this.smoothedMouthDist - tongueThreshold) * 18, 1.8);
                     this.tongue.scale.set(extension, extension, extension);
-                    // Position tongue inside mouth and push forward based on extension
-                    this.tongue.position.set(mouthX, mouthY - 10, mouthZ + (extension * 15));
+                    this.tongue.position.set(mouthX, mouthY - 15, mouthZ + (extension * 20));
                     this.tongue.rotation.set(pitch + (Math.PI/2), yaw, roll);
                 } else {
-                    this.tongue.scale.set(0.01, 0.01, 0.01); // Hide
+                    this.tongue.scale.set(0.01, 0.01, 0.01);
                 }
 
-                // 4. Update Anatomy Anchors
-                // Neck attaches to Chin
-                this.neck.position.set(chinX, chinY - 60, chinZ - 40);
+                // Anatomy Anchors
+                this.neck.position.set(chinX, chinY - 70, chinZ - 40);
                 this.neck.rotation.set(pitch, yaw, roll);
 
-                // Shoulders attach below neck. They turn 40% as much as the head.
-                this.torso.position.set(chinX, chinY - 200, chinZ - 60);
+                this.torso.position.set(chinX, chinY - 240, chinZ - 60);
                 this.torso.rotation.set(0, yaw * 0.4, roll * 0.2);
 
-                // Hat attaches to forehead (Node 10)
                 const fhX = rawPos[10*3]; const fhY = rawPos[10*3+1]; const fhZ = rawPos[10*3+2];
-                this.hatAnchor.position.set(fhX, fhY + 15, fhZ - 20);
+                this.hatAnchor.position.set(fhX, fhY + 20, fhZ - 20);
                 this.hatAnchor.rotation.set(pitch + 0.1, yaw, roll);
 
                 return { pitch, yaw, roll, mouthDist: this.smoothedMouthDist };
             }
 
             hide() {
-                this.isActive = false;
                 this.points.geometry.attributes.position.array.fill(0);
                 this.points.geometry.attributes.position.needsUpdate = true;
                 this.neck.position.set(0, 9999, 0);
@@ -327,9 +372,8 @@
             }
         }
 
-        // Initialize Players (P1: Action Green/Navy, P2: Cyan/Purple)
-        const agent1 = new HolographicAgent(0x69BE28, 0x002244, 'p1');
-        const agent2 = new HolographicAgent(0x00aaff, 0x3b0764, 'p2');
+        const agent1 = new HolographicAgent(0x69BE28, 0x002244);
+        const agent2 = new HolographicAgent(0x00aaff, 0x3b0764);
 
         // ==========================================
         // 3. MULTI-FACE AI TRACKING ENGINE
@@ -350,48 +394,43 @@
         updateMeshConfig();
 
         faceMesh.onResults((results) => {
-            document.getElementById('loading').style.display = 'none';
+            // ML is loaded! Hide the boot screen.
+            const bootScreen = document.getElementById('boot-screen');
+            if(bootScreen.style.display !== 'none') {
+                progressFill.style.width = '100%';
+                setTimeout(() => { bootScreen.style.display = 'none'; }, 500);
+            }
 
-            // Reset UI State
             agent1.hide(); agent2.hide();
-            document.getElementById('p1-status').innerText = "OFFLINE"; document.getElementById('p1-status').style.color = "#ef4444";
-            document.getElementById('p2-status').innerText = "OFFLINE"; document.getElementById('p2-status').style.color = "#ef4444";
+            document.getElementById('p1-status').innerText = "DISCONNECTED"; document.getElementById('p1-status').style.color = "#ff7b72";
+            document.getElementById('p2-status').innerText = "DISCONNECTED"; document.getElementById('p2-status').style.color = "#ff7b72";
             document.getElementById('p1-nodes').innerText = "0 / 478"; document.getElementById('p2-nodes').innerText = "0 / 478";
             document.getElementById('p1-alert').style.display = 'none'; document.getElementById('p2-alert').style.display = 'none';
 
             if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
                 
-                // Crucial Logic: Sort faces left-to-right based on x coordinate.
-                // This stops P1 and P2 from glitching and swapping bodies when they move around.
                 const faces = results.multiFaceLandmarks.sort((a, b) => b[1].x - a[1].x);
 
-                // --- PROCESS PLAYER 1 ---
                 const data1 = agent1.update(faces[0]);
-                document.getElementById('p1-status').innerText = "LOCKED"; document.getElementById('p1-status').style.color = "var(--p1-color)";
+                document.getElementById('p1-status').innerText = "LOCKED & SYNCED"; document.getElementById('p1-status').style.color = "var(--p1-color)";
                 document.getElementById('p1-nodes').innerText = "478 / 478";
-                document.getElementById('p1-pitch').innerText = (data1.pitch * (180/Math.PI)).toFixed(1) + "°";
-                document.getElementById('p1-yaw').innerText = (data1.yaw * (180/Math.PI)).toFixed(1) + "°";
-                document.getElementById('p1-roll').innerText = (data1.roll * (180/Math.PI)).toFixed(1) + "°";
-                document.getElementById('p1-mouth').innerText = (data1.mouthDist * 100).toFixed(2) + " units";
-                
-                if (data1.mouthDist > 0.06) document.getElementById('p1-alert').style.display = 'block';
+                document.getElementById('p1-pitch').innerText = (data1.pitch * (180/Math.PI)).toFixed(2) + "°";
+                document.getElementById('p1-yaw').innerText = (data1.yaw * (180/Math.PI)).toFixed(2) + "°";
+                document.getElementById('p1-mouth').innerText = (data1.mouthDist * 100).toFixed(2) + " mm";
+                if (data1.mouthDist > 0.055) document.getElementById('p1-alert').style.display = 'block';
 
-                // --- PROCESS PLAYER 2 (If detected and 2P mode is on) ---
                 if (faces.length > 1 && maxPlayers === 2) {
                     const data2 = agent2.update(faces[1]);
-                    document.getElementById('p2-status').innerText = "LOCKED"; document.getElementById('p2-status').style.color = "var(--p2-color)";
+                    document.getElementById('p2-status').innerText = "LOCKED & SYNCED"; document.getElementById('p2-status').style.color = "var(--p2-color)";
                     document.getElementById('p2-nodes').innerText = "478 / 478";
-                    document.getElementById('p2-pitch').innerText = (data2.pitch * (180/Math.PI)).toFixed(1) + "°";
-                    document.getElementById('p2-yaw').innerText = (data2.yaw * (180/Math.PI)).toFixed(1) + "°";
-                    document.getElementById('p2-roll').innerText = (data2.roll * (180/Math.PI)).toFixed(1) + "°";
-                    document.getElementById('p2-mouth').innerText = (data2.mouthDist * 100).toFixed(2) + " units";
-
-                    if (data2.mouthDist > 0.06) document.getElementById('p2-alert').style.display = 'block';
+                    document.getElementById('p2-pitch').innerText = (data2.pitch * (180/Math.PI)).toFixed(2) + "°";
+                    document.getElementById('p2-yaw').innerText = (data2.yaw * (180/Math.PI)).toFixed(2) + "°";
+                    document.getElementById('p2-mouth').innerText = (data2.mouthDist * 100).toFixed(2) + " mm";
+                    if (data2.mouthDist > 0.055) document.getElementById('p2-alert').style.display = 'block';
                 }
             }
         });
 
-        // Start Webcam
         const cam = new Camera(videoElement, {
             onFrame: async () => { await faceMesh.send({image: videoElement}); },
             width: 1280, height: 720
@@ -404,15 +443,11 @@
         const modeBtn = document.getElementById('btn-mode');
         modeBtn.addEventListener('click', () => {
             if (maxPlayers === 2) {
-                maxPlayers = 1;
-                modeBtn.innerText = "MODE: 1 PLAYER";
-                modeBtn.classList.remove('active');
-                document.getElementById('hud-p2').style.opacity = '0.2';
+                maxPlayers = 1; modeBtn.innerText = "SINGLE AGENT MODE";
+                modeBtn.classList.remove('active'); document.getElementById('hud-p2').style.opacity = '0.3';
             } else {
-                maxPlayers = 2;
-                modeBtn.innerText = "MODE: 2 PLAYERS";
-                modeBtn.classList.add('active');
-                document.getElementById('hud-p2').style.opacity = '1';
+                maxPlayers = 2; modeBtn.innerText = "DUAL AGENT MODE";
+                modeBtn.classList.add('active'); document.getElementById('hud-p2').style.opacity = '1';
             }
             updateMeshConfig();
         });
@@ -428,8 +463,14 @@
         // ==========================================
         function animate() {
             requestAnimationFrame(animate);
-            // Slowly rotate the floor grid for ambient movement
-            grid.position.z = (Date.now() * 0.05) % 60;
+            // Ambient environment animations
+            dustSystem.rotation.y += 0.001;
+            gridHelper.position.z = (Date.now() * 0.1) % 100;
+            
+            // Slight camera drift for cinematic feel
+            camera.position.x = Math.sin(Date.now() * 0.0005) * 50;
+            camera.lookAt(0, 0, 0);
+
             renderer.render(scene, camera);
         }
         animate();
