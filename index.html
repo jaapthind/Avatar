@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Biometric Matrix v12.0 | Thermal Edition</title>
+    <title>Overlord Matrix v14.0 | Thermal Raster Edition</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -11,185 +11,220 @@
 
     <style>
         :root {
-            --bg: #000308;
+            --bg: #000205;
             --neon-green: #69BE28; 
-            --thermal-hot: #ff4500;
-            --thermal-cold: #0000ff;
-            --glass: rgba(1, 4, 9, 0.95);
+            --neon-blue: #00f2ff;
+            --danger: #ff003c;
+            --panel-bg: rgba(2, 6, 12, 0.95);
         }
 
         body { margin: 0; overflow: hidden; background: var(--bg); color: #fff; font-family: 'Consolas', monospace; }
         #webgl-canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
 
-        /* HUD STYLING */
+        /* ADVANCED HUD SYSTEM */
         .hud {
-            position: absolute; top: 30px; left: 30px; width: 340px;
-            background: var(--glass); border: 1px solid #161b22;
-            border-top: 5px solid var(--neon-green); border-radius: 4px;
-            padding: 25px; z-index: 10; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+            position: absolute; top: 20px; left: 20px; width: 380px;
+            background: var(--panel-bg); border: 1px solid #1e293b;
+            border-left: 5px solid var(--neon-green); border-radius: 4px;
+            padding: 25px; z-index: 10; box-shadow: 0 0 40px rgba(0,0,0,0.9);
+            transition: transform 0.05s linear; /* For audio vibration */
         }
 
-        h1 { margin: 0 0 15px 0; font-size: 1.1rem; letter-spacing: 4px; color: var(--neon-green); text-transform: uppercase; }
-        .data-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 0.8rem; border-bottom: 1px dashed #30363d; padding-bottom: 5px; }
-        .lbl { color: #8b949e; }
-        .val { font-weight: bold; }
+        h1 { margin: 0 0 15px 0; font-size: 1.2rem; letter-spacing: 5px; color: var(--neon-green); text-transform: uppercase; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.8rem; }
+        .lbl { color: #64748b; font-weight: bold; }
+        .val { font-weight: bold; color: var(--neon-blue); text-shadow: 0 0 5px var(--neon-blue); }
 
-        /* TOGGLE SWITCH */
-        .switch-container { margin-top: 20px; display: flex; align-items: center; justify-content: space-between; background: #000; padding: 10px; border-radius: 4px; border: 1px solid #30363d; }
-        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        /* TOGGLE SWITCHES */
+        .controls { margin-top: 20px; border-top: 1px solid #334155; padding-top: 20px; }
+        .tgl-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .switch { position: relative; width: 50px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 24px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--neon-green); }
-        input:checked + .slider:before { transform: translateX(26px); }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #0f172a; transition: .3s; border-radius: 24px; border: 1px solid #334155; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 3px; background-color: #475569; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--neon-green); border-color: var(--neon-green); }
+        input:checked + .slider:before { transform: translateX(24px); background-color: #000; }
 
-        /* MODAL */
+        /* RECURSIVE MODAL */
         #modal {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: var(--glass); border: 2px solid #00f2ff;
-            padding: 50px; border-radius: 4px; text-align: center; z-index: 100;
-            display: none; box-shadow: 0 0 100px rgba(0, 242, 255, 0.2);
+            background: var(--panel-bg); border: 2px solid var(--neon-blue);
+            padding: 60px; border-radius: 8px; text-align: center; z-index: 100;
+            display: none; box-shadow: 0 0 100px rgba(0, 242, 255, 0.4);
         }
-        .btn-group { display: flex; gap: 15px; margin-top: 30px; }
-        .btn { flex: 1; padding: 15px; border: 1px solid #00f2ff; background: transparent; color: #00f2ff; cursor: pointer; text-transform: uppercase; font-weight: bold; }
+        .res-text { font-size: 3rem; font-weight: 900; margin: 20px 0; letter-spacing: 10px; color: #fff; }
+        .btn-group { display: flex; gap: 20px; margin-top: 40px; }
+        .btn { flex: 1; padding: 20px; border: 1px solid var(--neon-blue); background: transparent; color: var(--neon-blue); font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
         .btn:hover { background: var(--neon-green); color: #000; border-color: var(--neon-green); }
 
-        #video-feed { position: absolute; bottom: 30px; right: 30px; width: 280px; border: 1px solid #30363d; z-index: 10; transform: scaleX(-1); }
-
-        /* RAINBOW OVERLAY */
+        #video-feed { position: absolute; bottom: 30px; right: 30px; width: 320px; border: 1px solid #334155; z-index: 10; transform: scaleX(-1); }
+        
         #rainbow-strobe { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 5; pointer-events: none; opacity: 0; }
+        #error-overlay { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,0,60,0.2); z-index: 6; display: none; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="rainbow-strobe"></div>
+    <div id="error-overlay"></div>
     <canvas id="webgl-canvas"></canvas>
     <video id="video-feed" autoplay playsinline></video>
 
-    <div class="hud">
-        <h1>Sensory Matrix v12.0</h1>
-        <div class="data-row"><span class="lbl">NETWORK:</span><span class="val" id="status">SCANNING</span></div>
-        <div class="data-row"><span class="lbl">LUMINANCE:</span><span class="val" id="lum-val">0.000</span></div>
-        <div class="data-row"><span class="lbl">PHENOTYPE:</span><span class="val" id="phenotype-val">PENDING</span></div>
+    <div class="hud" id="main-hud">
+        <h1>Overlord v14.0</h1>
+        <div class="data-row"><span class="lbl">UPLINK_STATE:</span><span class="val" id="status">SYNCING...</span></div>
+        <div class="data-row"><span class="lbl">PHENOTYPE:</span><span class="val" id="p-val">ANALYZING</span></div>
+        <div class="data-row"><span class="lbl">DB_LEVEL:</span><span class="val" id="db-val">0.0</span></div>
         
-        <div class="switch-container">
-            <span class="lbl">THERMAL OVERLAY</span>
-            <label class="switch">
-                <input type="checkbox" id="thermal-toggle">
-                <span class="slider"></span>
-            </label>
+        <div class="controls">
+            <div class="tgl-row"><span class="lbl">RASTER THERMAL MESH</span><label class="switch"><input type="checkbox" id="tgl-thermal"><span class="slider"></span></label></div>
+            <div class="tgl-row"><span class="lbl">AUDIO REACTIVITY</span><label class="switch"><input type="checkbox" id="tgl-audio" checked><span class="slider"></span></label></div>
+            <div class="tgl-row"><span class="lbl">GPU BLOOM</span><label class="switch"><input type="checkbox" id="tgl-bloom" checked><span class="slider"></span></label></div>
         </div>
     </div>
 
     <div id="modal">
-        <p style="color: #8b949e;">BINARY CLASSIFICATION DETECTED</p>
-        <div style="font-size: 2.5rem; font-weight: 900; margin: 20px 0;" id="final-res">BLACK</div>
+        <p style="color: #64748b; letter-spacing: 3px;">BIOMETRIC CLASSIFICATION</p>
+        <div class="res-text" id="final-res">BLACK</div>
         <div class="btn-group">
             <button class="btn" onclick="finalize(true)">CONFIRM</button>
-            <button class="btn" onclick="finalize(false)" style="border-color: #ff003c; color: #ff003c;">INCORRECT</button>
+            <button class="btn" onclick="finalize(false)" style="border-color: var(--danger); color: var(--danger);">INCORRECT</button>
         </div>
     </div>
 
     <script>
-        // --- 1. THREE.JS ENGINE ---
+        // --- 1. THE ARCHITECTURE: TRI-NODE SURFACE MAPPING ---
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 1, 3000);
-        camera.position.z = 850;
+        camera.position.z = 900;
         const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('webgl-canvas'), antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-        const nodeGeo = new THREE.BufferGeometry();
-        const nodePos = new Float32Array(478 * 3);
-        const nodeColors = new Float32Array(478 * 3); // Per-vertex coloring
-        nodeGeo.setAttribute('position', new THREE.BufferAttribute(nodePos, 3));
-        nodeGeo.setAttribute('color', new THREE.BufferAttribute(nodeColors, 3));
+        // Solid Face Mesh (Uses triangles, not just dots)
+        const faceGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(478 * 3);
+        const colors = new Float32Array(478 * 3);
         
-        const nodeMat = new THREE.PointsMaterial({ size: 4.5, vertexColors: true, transparent: true, opacity: 0.9 });
-        const faceMesh = new THREE.Points(nodeGeo, nodeMat);
-        scene.add(faceMesh);
+        // MediaPipe triangulation indices (standard for 468/478 face mesh)
+        const indices = [
+            0,267,269, 267,0,37, 37,0,39, 39,0,40, 40,0,185, 185,0,61, 61,0,146, 146,0,91, 
+            91,0,181, 181,0,84, 84,0,17, 17,0,314, 314,0,405, 405,0,321, 321,0,375, 375,0,291, 
+            291,0,409, 409,0,270, 270,0,269, 269,267,270 // Simplified list for the example
+        ];
+        // We'll use Points for performance but with a Custom Material for "Thermal Rastering"
+        faceGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        faceGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        
+        const faceMat = new THREE.PointsMaterial({ size: 5, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
+        const faceObject = new THREE.Points(faceGeo, faceMat);
+        scene.add(faceObject);
 
-        // --- 2. BIOMETRIC & THERMAL LOGIC ---
-        let thermalActive = false;
-        let locked = false;
-        let rainbowActive = false;
+        // Grid environment
+        const grid = new THREE.GridHelper(4000, 50, 0x002244, 0x00050b);
+        grid.position.y = -500;
+        scene.add(grid);
+
+        // --- 2. SENSORY & LOGIC ---
+        let thermal = false, audioSync = true, locked = false, rainbow = false, dbLevel = 0;
         const video = document.getElementById('video-feed');
-        const buffer = document.createElement('canvas');
+        const sampler = document.createElement('canvas');
 
-        document.getElementById('thermal-toggle').addEventListener('change', (e) => {
-            thermalActive = e.target.checked;
+        document.getElementById('tgl-thermal').onchange = (e) => thermal = e.target.checked;
+        document.getElementById('tgl-audio').onchange = (e) => audioSync = e.target.checked;
+
+        // Audio Glitch Engine
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+            const actx = new AudioContext();
+            const ana = actx.createAnalyser();
+            actx.createMediaStreamSource(s).connect(ana);
+            const data = new Uint8Array(ana.frequencyBinCount);
+            setInterval(() => {
+                ana.getByteFrequencyData(data);
+                dbLevel = data.reduce((a,b) => a+b) / data.length;
+                document.getElementById('db-val').innerText = dbLevel.toFixed(1);
+                if(audioSync && dbLevel > 20) {
+                    document.getElementById('main-hud').style.transform = `translate(${(Math.random()-0.5)*dbLevel*0.2}px, ${(Math.random()-0.5)*dbLevel*0.2}px)`;
+                }
+            }, 50);
         });
 
-        function getThermalColor(lum) {
-            // Classic Ironbow Spectrum: Blue (Cold) -> Purple -> Red -> Orange -> Yellow (Hot)
-            if (lum < 0.25) return new THREE.Color(0, 0, lum * 4); // Blue
-            if (lum < 0.5) return new THREE.Color((lum-0.25)*4, 0, 1); // Purple/Red
-            if (lum < 0.75) return new THREE.Color(1, (lum-0.5)*4, 0); // Orange
-            return new THREE.Color(1, 1, (lum-0.75)*4); // Yellow/White
-        }
-
-        function runScan(landmarks) {
-            if (locked) return;
-            buffer.width = video.videoWidth; buffer.height = video.videoHeight;
-            const ctx = buffer.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-
-            const nosePixel = ctx.getImageData(Math.floor(landmarks[1].x * buffer.width), Math.floor(landmarks[1].y * buffer.height), 1, 1).data;
-            const avgLum = (0.299 * nosePixel[0] + 0.587 * nosePixel[1] + 0.114 * nosePixel[2]) / 255;
-            
-            document.getElementById('lum-val').innerText = avgLum.toFixed(3);
-            document.getElementById('final-res').innerText = avgLum < 0.42 ? "BLACK" : "WHITE";
-            document.getElementById('modal').style.display = 'block';
-            locked = true;
+        function getThermalColor(l) {
+            // High-fidelity Ironbow Gradient
+            if (l < 0.2) return new THREE.Color(0, 0, l*5); // Indigo
+            if (l < 0.4) return new THREE.Color(l*2.5, 0, 0.5); // Purple
+            if (l < 0.7) return new THREE.Color(1, (l-0.4)*2, 0); // Orange/Yellow
+            return new THREE.Color(1, 1, (l-0.7)*3); // White hot
         }
 
         function finalize(success) {
             document.getElementById('modal').style.display = 'none';
             if (success) {
-                rainbowActive = true;
-                document.getElementById('phenotype-val').innerText = document.getElementById('final-res').innerText;
-                document.getElementById('rainbow-strobe').style.opacity = '0.3';
+                // Rainbow Strobe with 5-second timeout
+                rainbow = true;
+                document.getElementById('rainbow-strobe').style.opacity = '0.4';
+                document.getElementById('p-val').innerText = document.getElementById('final-res').innerText;
+                setTimeout(() => {
+                    rainbow = false;
+                    document.getElementById('rainbow-strobe').style.opacity = '0';
+                    faceMat.color.set(0xffffff);
+                }, 5000);
             } else {
-                locked = false; // Simple reset for this version
+                // RECURSIVE RE-SCAN
+                locked = true; // Still locked while scan restarts
+                document.getElementById('error-overlay').style.display = 'block';
+                faceMat.color.set(0xff003c);
+                setTimeout(() => {
+                    document.getElementById('error-overlay').style.display = 'none';
+                    faceMat.color.set(0xffffff);
+                    locked = false; // Re-unlocks the logic to scan again
+                }, 5000);
             }
         }
 
-        // --- 3. AI UPLINK ---
-        const faceAI = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
+        // --- 3. THE ML PIPELINE ---
+        const faceAI = new FaceMesh({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`});
         faceAI.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.8, minTrackingConfidence: 0.8 });
 
-        faceAI.onResults((results) => {
-            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-                const landmarks = results.multiFaceLandmarks[0];
-                const pos = faceMesh.geometry.attributes.position.array;
-                const colors = faceMesh.geometry.attributes.color.array;
-                
-                buffer.width = video.videoWidth; buffer.height = video.videoHeight;
-                const ctx = buffer.getContext('2d');
-                ctx.drawImage(video, 0, 0);
+        faceAI.onResults((res) => {
+            if (res.multiFaceLandmarks && res.multiFaceLandmarks.length > 0) {
+                const marks = res.multiFaceLandmarks[0];
+                const pos = faceObject.geometry.attributes.position.array;
+                const cols = faceObject.geometry.attributes.color.array;
+                document.getElementById('status').innerText = "LINK_LOCKED";
+
+                sampler.width = video.videoWidth; sampler.height = video.videoHeight;
+                const ctx = sampler.getContext('2d'); ctx.drawImage(video, 0, 0);
 
                 for (let i = 0; i < 478; i++) {
-                    pos[i*3] = (landmarks[i].x - 0.5) * -1300;
-                    pos[i*3+1] = (landmarks[i].y - 0.5) * -1300;
-                    pos[i*3+2] = landmarks[i].z * 1300;
+                    let vib = audioSync ? (Math.random() - 0.5) * dbLevel * 0.5 : 0;
+                    pos[i*3] = (marks[i].x - 0.5) * -1400 + vib;
+                    pos[i*3+1] = (marks[i].y - 0.5) * -1400 + vib;
+                    pos[i*3+2] = marks[i].z * 1400;
 
-                    let c = new THREE.Color(0x69BE28); // Default Action Green
-                    
-                    if (thermalActive) {
-                        const px = Math.floor(landmarks[i].x * buffer.width);
-                        const py = Math.floor(landmarks[i].y * buffer.height);
-                        const data = ctx.getImageData(px, py, 1, 1).data;
-                        const l = (0.299*data[0] + 0.587*data[1] + 0.114*data[2]) / 255;
-                        c = getThermalColor(l);
-                    } else if (rainbowActive) {
-                        c.setHSL((Date.now() * 0.001 + i/478) % 1, 1, 0.5);
+                    let c = new THREE.Color(0xffffff);
+                    if (thermal) {
+                        const px = Math.floor(marks[i].x * sampler.width), py = Math.floor(marks[i].y * sampler.height);
+                        const d = ctx.getImageData(px, py, 1, 1).data;
+                        c = getThermalColor((0.299*d[0] + 0.587*d[1] + 0.114*d[2]) / 255);
+                    } else if (rainbow) {
+                        c.setHSL((Date.now() * 0.002 + i/478) % 1, 1, 0.5);
                     }
-
-                    colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b;
+                    cols[i*3] = c.r; cols[i*3+1] = c.g; cols[i*3+2] = c.b;
                 }
-                faceMesh.geometry.attributes.position.needsUpdate = true;
-                faceMesh.geometry.attributes.color.needsUpdate = true;
+                faceObject.geometry.attributes.position.needsUpdate = true;
+                faceObject.geometry.attributes.color.needsUpdate = true;
 
-                if (!locked) setTimeout(() => runScan(landmarks), 4000);
+                if (!locked && !rainbow) {
+                    const nose = ctx.getImageData(Math.floor(marks[1].x*sampler.width), Math.floor(marks[1].y*sampler.height), 1, 1).data;
+                    const l = (0.299*nose[0] + 0.587*nose[1] + 0.114*nose[2]) / 255;
+                    setTimeout(() => {
+                        if(!locked && !rainbow) {
+                            document.getElementById('final-res').innerText = l < 0.42 ? "BLACK" : "WHITE";
+                            document.getElementById('modal').style.display = 'block';
+                            locked = true;
+                        }
+                    }, 4000);
+                }
             }
         });
 
@@ -197,10 +232,7 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            if (rainbowActive) {
-                const strobe = document.getElementById('rainbow-strobe');
-                strobe.style.background = `hsl(${Date.now() % 360}, 100%, 50%)`;
-            }
+            if (rainbow) document.getElementById('rainbow-strobe').style.backgroundColor = `hsl(${Date.now() % 360}, 100%, 50%)`;
             renderer.render(scene, camera);
         }
         animate();
