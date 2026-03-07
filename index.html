@@ -142,8 +142,8 @@
             
             // Advanced Classification Logic
             let result = "WHITE / LIGHT";
-            if (brightness < 0.35) result = "BLACK / DARK";
-            else if (brightness < 0.50) result = "BROWN / MEDIUM";
+            if (brightness < 0.35) result = "BLACK";
+            else if (brightness < 0.50) result = "White";
 
             document.getElementById('final-res').innerText = result;
             document.getElementById('modal').style.display = 'block';
@@ -222,3 +222,4 @@
     </script>
 </body>
 </html>
+
